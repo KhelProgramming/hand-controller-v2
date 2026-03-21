@@ -50,6 +50,11 @@ def main() -> None:
         help="Run the live control panel + transparent-overlay path with the real CV worker.",
     )
     parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Run a repo-local validation check for imports, local artifacts, and ML loading.",
+    )
+    parser.add_argument(
         "--tuning",
         type=str,
         default=None,
@@ -88,8 +93,15 @@ def main() -> None:
         run_ui_live_control(config)
         return
 
+    if args.validate:
+        from .runtime.validation import run_validation
+
+        print(build_boot_message(config, state))
+        run_validation(config)
+        return
+
     print(build_boot_message(config, state))
-    print("hint=run with --vision-smoke, --control-smoke, --ui-smoke, or --ui-live for live testing")
+    print("hint=run with --vision-smoke, --control-smoke, --ui-smoke, --ui-live, or --validate for repo checks")
 
 
 if __name__ == "__main__":

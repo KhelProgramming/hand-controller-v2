@@ -139,6 +139,7 @@ Completed:
 - Phase K2/K3 baseline code: `runtime/ui_live_control.py` and `--ui-live` now run the real CV worker through the Qt control panel + transparent overlay path
 - Phase K4 baseline code: `controllers/keyboard_controller.py` now builds a data-driven full keyboard layout with a complete practical key set and configurable row/size/width settings
 - Phase K6 cleanup code: `runtime/control_engine.py` now centralizes mouse mode, keyboard mode, ML updates, and transition cleanup so both `--control-smoke` and `--ui-live` share the same behavior
+- Hardening baseline: local ML artifacts now exist in `artifacts/`, and `runtime/validation.py` provides a repo-local validation command
 - Current Phase 6 behavior uses configurable ML settings under the `ml` section of the tuning JSON files.
 
 Repo-local source of truth:
@@ -153,6 +154,7 @@ Current package files:
 - `hand_controller/config/settings.py`
 - `hand_controller/runtime/state.py`
 - `hand_controller/runtime/control_engine.py`
+- `hand_controller/runtime/validation.py`
 - `hand_controller/ml/labels.py`
 - `hand_controller/controllers/keyboard_controller.py`
 - `hand_controller/controllers/mode_toggle.py`
@@ -172,6 +174,9 @@ Smoke tests already passed:
 ## Next exact phase
 
 Current validation task:
+- run `python -m hand_controller --validate`
+- confirm the rewrite resolves ML artifacts from `hand-controller-rewrite/artifacts/`
+- confirm the validator reports `ml_uses_local_artifacts=True`
 - install `requirements-later.txt` if PyQt5 is not present yet
 - run `python -m hand_controller --ui-smoke`
 - confirm the control panel window opens
@@ -213,6 +218,7 @@ Next implementation phase after validation:
 - Stable mouse movement is the top priority of the rewrite.
 - Movement should adapt the useful algorithmic ideas from `touch-v15` without copying its full architecture.
 - The rewrite should start synchronous and simple; add threading later only if it is truly needed.
+- Prefer the rewrite repo's local `artifacts/` directory as the primary ML source.
 - `hold` must not trigger Alt+Tab.
 - `toggle` must not kill recognition.
 - `idle` must not be used as the basis for movement semantics.

@@ -18,12 +18,24 @@ Current status:
 - Phase K2/K3 baseline code exists: `--ui-live` runs the real CV worker and emits live keyboard, skeleton, selfie, and status payloads into the transparent Qt overlay.
 - Phase K4 baseline code exists: the keyboard layout is now data-driven, uses a complete practical key set, and supports configurable sizing, spacing, bottom margin, row definitions, and per-key width units.
 - Phase K6 cleanup code exists: mouse mode, keyboard mode, ML gating, and transition handling now flow through one shared live-control engine used by both `--control-smoke` and `--ui-live`.
+- Hardening baseline exists: rewrite-local ML artifacts now live under `artifacts/`, and `--validate` checks imports, local artifact presence, and ML loading from this repo.
 
 ## Baseline
 - Python 3.11
 - MediaPipe for hand tracking
 - Existing MLP artifacts can be reused later through an adapter layer
 - Mouse clicks remain rule-based
+
+## Local artifacts
+The rewrite is now self-contained for ML artifacts.
+
+Local model files live under:
+- `artifacts/validator_scaler.joblib`
+- `artifacts/validator_label_encoder.joblib`
+- `artifacts/validator_MLP.joblib`
+- `artifacts/validator_model_meta.json`
+
+The config still keeps the old `touch-v15` fallback paths as a safety net, but the intended primary source is now this repo's `artifacts/` directory.
 
 ## First principles for this rewrite
 - Stable mouse movement is the highest priority.
@@ -60,6 +72,19 @@ an existing project venv that already has the stack installed. For example:
 ```powershell
 & 'C:\Users\acer\school\self-study\programming\projects\computer-vision-mouse-control\touch-v15\.venv\Scripts\python.exe' -m hand_controller
 ```
+
+## Repo validation
+Run this before live testing if you want a quick sanity check of the rewrite environment:
+
+```powershell
+python -m hand_controller --validate
+```
+
+What it checks:
+- local artifact files exist in this repo
+- required Python imports load
+- the ML predictor can load successfully
+- the predictor resolves to the rewrite repo's local artifact files
 
 ## Phase 2 smoke run
 ```powershell
