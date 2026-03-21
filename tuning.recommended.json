@@ -1,0 +1,14 @@
+{
+  "mouse_click": {
+    "left_pinch_threshold_px": 35.0,
+    "left_press_multiplier": 0.72,
+    "left_release_multiplier": 1.02,
+    "right_pinch_threshold_px": 46.0,
+    "right_press_multiplier": 0.88,
+    "right_release_multiplier": 1.12,
+    "click_cooldown": 0.08,
+    "double_click_interval": 0.6,
+    "double_click_assist_window": 0.38,
+    "left_hold_drag_seconds": 0.38
+  }
+}

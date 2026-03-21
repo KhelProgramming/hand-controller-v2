@@ -47,9 +47,11 @@ These decisions are intentional and should not be changed casually.
 
 ### Click ownership
 - Final behavior for mouse clicks is rule-based.
-- `left click` = thumb-index pinch
-- `double click` = two fast left pinches
-- `right click` = thumb-middle pinch
+- `left click` = quick thumb-index pinch-and-release
+- `double click` = first left tap releases normally, then the second click can fire as the second pinch begins
+- `double_click_assist_window` limits how long that early second-click assist stays active so drag is less likely to be stolen
+- `right click` = thumb-middle pinch down
+- `drag` = thumb-index pinch held long enough to trigger left-button hold
 - Existing MLP labels `left_click` and `right_click` may still be predicted, but they must not drive behavior in the rewrite.
 
 ### Keyboard
@@ -92,19 +94,29 @@ Example:
 Target runtime:
 - Python 3.11
 
-Pinned dependencies:
-- `mediapipe==0.10.21`
-- `scikit-learn==1.7.2`
-- `PyQt5==5.15.11`
-- `opencv-python==4.11.0.86`
-- `numpy==2.2.3`
-- `joblib==1.4.2`
-- `pyautogui==0.9.54`
-- `pillow==11.1.0`
+Current phase-based install strategy:
+- `requirements.txt`
+  - `absl-py==2.4.0`
+  - `attrs==26.1.0`
+  - `flatbuffers==25.12.19`
+  - `matplotlib==3.10.8`
+  - `numpy==1.26.4`
+  - `opencv-contrib-python==4.11.0.86`
+  - `protobuf==4.25.8`
+- `mediapipe==0.10.21 --no-deps`
+- `requirements-phase4.txt`
+  - `pyautogui==0.9.54`
+  - `pillow==12.1.1`
+- `requirements-later.txt`
+  - heavier packages for ML and UI phases, including `scikit-learn==1.7.2`, `joblib`, and `PyQt5`
+- `tuning.local.json`
+  - optional repo-root JSON overrides that let the user tune click and movement behavior without editing Python code
+- `tuning.recommended.json`
+  - recommended preset for testing the current click/drag behavior without relying on whatever values are in `tuning.local.json`
 
 Reason:
-- this matches the practical compatibility target for MediaPipe and the existing saved MLP artifacts
-- the existing model artifacts produced version mismatch warnings when loaded under a different `scikit-learn` version
+- this avoids pulling unnecessary heavy MediaPipe extras too early
+- the MLP artifacts should still load later under `scikit-learn==1.7.2`
 
 ## Current status
 
@@ -115,7 +127,8 @@ Completed:
 - Phase 2 validated on the user's machine: left and right hands are detected correctly
 - Phase 3 baseline code: stable primary-hand selection with hysteresis and palm-facing safety detection
 - Phase 3 validated on the user's machine
-- Phase 4 baseline code: movement-only mouse controller, lazy action executor, and `--mouse-smoke`
+- Phase 4 validated on the user's machine: stable mouse movement is smooth and usable
+- Phase 5 click/drag refactor code: release-based left tap, easier double-click path, down-triggered right click, hold-to-drag, JSON tuning overrides, and updated `--mouse-smoke`
 
 Repo-local source of truth:
 - `docs/gesture-spec.md`
@@ -136,14 +149,16 @@ Smoke tests already passed:
 ## Next exact phase
 
 Current validation task:
-- install `requirements-phase4.txt`
 - run `python -m hand_controller --mouse-smoke`
-- confirm movement is stable and usable
-- confirm movement stops when the active hand is not palm-facing
-- confirm movement does not flicker badly when both hands are visible
+- confirm left click via quick thumb-index pinch-and-release
+- confirm right click via thumb-middle pinch down
+- confirm two quick left tap cycles feel easier than before
+- confirm left-hold starts drag and releasing the pinch ends drag
+- confirm cursor freezes before drag starts, not for the entire drag
+- adjust `tuning.local.json` if the click feel still needs experimentation
 
 Next implementation phase after validation:
-- Phase 5: rule-based clicking
+- Phase 6: MLP adapter
 
 ## Important warnings for future work
 

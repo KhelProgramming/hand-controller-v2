@@ -4,11 +4,11 @@ import time
 
 from ..config.settings import AppConfig
 from ..controllers import MouseController, execute_actions, get_screen_size
-from ..gestures import is_palm_facing_thumb_pinky
+from ..gestures import MouseClickGestureState, MouseClickDetector, is_palm_facing_thumb_pinky
 from ..vision.camera import Camera
 from ..vision.hand_selector import HandSelector
 from ..vision.hand_tracker import HandTracker
-from ..vision.models import DetectedHand, VisionResult
+from ..vision.models import DetectedHand, SelectedHands, VisionResult
 
 
 MOVEMENT_ANCHOR_IDX = 5
@@ -35,15 +35,17 @@ def _draw_mouse_smoke(
     *,
     vision: VisionResult,
     tracker: HandTracker,
-    selector: HandSelector,
+    selected: SelectedHands,
     mirrored_input: bool,
     movement_status: str,
     movement_enabled: bool,
+    click_state: MouseClickGestureState,
+    click_freeze: bool,
+    drag_active: bool,
 ) -> None:
     import cv2
 
     height, width = frame_bgr.shape[:2]
-    selected = selector.select(vision.hands, width, height)
 
     for hand in vision.hands:
         is_primary = selected.primary is hand
@@ -94,11 +96,30 @@ def _draw_mouse_smoke(
             cv2.LINE_AA,
         )
 
+    pinch_line = "pinch idx={idx} {idx_dist:.1f}px  mid={mid} {mid_dist:.1f}px".format(
+        idx="down" if click_state.left_pressed else "up",
+        idx_dist=click_state.left_distance_px or 0.0,
+        mid="down" if click_state.right_pressed else "up",
+        mid_dist=click_state.right_distance_px or 0.0,
+    )
+    cv2.putText(
+        frame_bgr,
+        pinch_line,
+        (16, height - 24),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
+
     status_line = "  ".join(
         [
             f"hands={len(vision.hands)}",
             f"active={selected.primary.label if selected.primary else '-'}",
             f"movement={'on' if movement_enabled else 'off'}",
+            f"freeze={'yes' if click_freeze else 'no'}",
+            f"drag={'yes' if drag_active else 'no'}",
             movement_status,
             "press q to quit",
         ]
@@ -119,7 +140,13 @@ def run_mouse_smoke(config: AppConfig) -> None:
     import cv2
 
     screen_w, screen_h = get_screen_size()
-    controller = MouseController(screen_w=screen_w, screen_h=screen_h, settings=config.mouse_motion)
+    controller = MouseController(
+        screen_w=screen_w,
+        screen_h=screen_h,
+        motion_settings=config.mouse_motion,
+        click_settings=config.mouse_click,
+    )
+    click_detector = MouseClickDetector(config.mouse_click)
 
     with Camera(
         index=config.camera.index,
@@ -135,7 +162,7 @@ def run_mouse_smoke(config: AppConfig) -> None:
         if not camera.is_opened():
             raise RuntimeError("Unable to open the configured camera.")
 
-        window_name = "Hand Controller Rewrite - Phase 4 Mouse Smoke"
+        window_name = "Hand Controller Rewrite - Phase 5 Mouse Smoke"
 
         while True:
             ok, frame_bgr = camera.read()
@@ -155,23 +182,35 @@ def run_mouse_smoke(config: AppConfig) -> None:
             )
             movement_enabled = active_hand is not None and palm_facing
             anchor_norm = _movement_anchor_norm(active_hand) if active_hand is not None else None
+            click_state = click_detector.analyze(
+                active_hand=active_hand,
+                frame_width=vision.frame_width,
+                frame_height=vision.frame_height,
+            )
 
             actions, movement_status = controller.update(
                 anchor_norm=anchor_norm,
-                movement_enabled=movement_enabled,
+                movement_gate_open=movement_enabled,
+                click_state=click_state,
                 now=time.time(),
             )
             execute_actions(actions)
+            click_freeze = click_state.right_pressed or (
+                click_state.left_pressed and not controller.state.drag_active
+            )
 
             debug_frame = frame_bgr.copy()
             _draw_mouse_smoke(
                 debug_frame,
                 vision=vision,
                 tracker=tracker,
-                selector=selector,
+                selected=selected,
                 mirrored_input=config.tracker.mirror_input,
                 movement_status=movement_status,
                 movement_enabled=movement_enabled,
+                click_state=click_state,
+                click_freeze=click_freeze,
+                drag_active=controller.state.drag_active,
             )
 
             cv2.imshow(window_name, debug_frame)

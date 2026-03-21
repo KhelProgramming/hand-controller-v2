@@ -45,10 +45,12 @@ Exit criteria:
 - Left click.
 - Double click.
 - Right click.
-- Movement freeze during active click pinch.
+- Hold-to-drag.
+- Precision freeze before drag starts.
+- Tunable click thresholds and timing.
 
 Exit criteria:
-- Clicking is reliable and targeting is precise.
+- Clicking and drag behavior are reliable and targeting is precise.
 
 ## Phase 6: MLP Adapter
 - Load existing artifacts.

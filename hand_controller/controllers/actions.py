@@ -16,8 +16,18 @@ class Click:
 
 
 @dataclass(frozen=True, slots=True)
+class MouseDown:
+    button: Literal["left", "right"] = "left"
+
+
+@dataclass(frozen=True, slots=True)
+class MouseUp:
+    button: Literal["left", "right"] = "left"
+
+
+@dataclass(frozen=True, slots=True)
 class DoubleClick:
     button: Literal["left"] = "left"
 
 
-Action = Union[MoveRelative, Click, DoubleClick]
+Action = Union[MoveRelative, Click, MouseDown, MouseUp, DoubleClick]

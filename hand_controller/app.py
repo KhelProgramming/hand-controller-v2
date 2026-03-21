@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 
-from .config.settings import AppConfig, build_default_config
+from .config.settings import AppConfig, build_default_config, tuning_snapshot
 from .runtime.state import RuntimeState
 
 
@@ -14,7 +15,8 @@ def build_boot_message(config: AppConfig, state: RuntimeState) -> str:
             f"camera={config.camera.width}x{config.camera.height}@{config.camera.index}",
             f"mode={state.mode.value}",
             f"control_enabled={state.control_enabled}",
-            "status=phase-4-ready",
+            f"tuning={config.tuning_path or 'defaults'}",
+            "status=phase-5-ready",
         ]
     )
 
@@ -29,11 +31,17 @@ def main() -> None:
     parser.add_argument(
         "--mouse-smoke",
         action="store_true",
-        help="Run the Phase 4 movement-only mouse smoke test.",
+        help="Run the Phase 5 mouse smoke test with movement and rule-based clicks.",
+    )
+    parser.add_argument(
+        "--tuning",
+        type=str,
+        default=None,
+        help="Optional path to a JSON tuning file. Defaults to tuning.local.json in the repo root if present.",
     )
     args = parser.parse_args()
 
-    config = build_default_config()
+    config = build_default_config(args.tuning)
     state = RuntimeState()
 
     if args.vision_smoke:
@@ -45,6 +53,8 @@ def main() -> None:
     if args.mouse_smoke:
         from .runtime.mouse_smoke import run_mouse_smoke
 
+        print(build_boot_message(config, state))
+        print(json.dumps(tuning_snapshot(config), indent=2))
         run_mouse_smoke(config)
         return
 

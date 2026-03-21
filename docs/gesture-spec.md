@@ -52,15 +52,20 @@ These labels may still be predicted by the existing model, but they will not dri
 
 ### Left click
 - Physical pose: thumb-index pinch.
-- Runtime action: single left click.
+- Runtime action: quick pinch-and-release = single left click.
 
 ### Double click
-- Meaning: two left-click pinches within the configured interval.
-- Runtime action: double left click.
+- Meaning: two quick left tap cycles within the configured interval.
+- Runtime action: first click happens on the first release, and the second click may fire as the second pinch begins so the OS interprets them as a double click more easily.
 
 ### Right click
 - Physical pose: thumb-middle pinch.
-- Runtime action: single right click.
+- Runtime action: pinch down = single right click.
+
+### Drag
+- Physical pose: thumb-index pinch held longer than the drag threshold.
+- Runtime action: start left-button hold and allow drag movement.
+- Release action: releasing the pinch ends the drag.
 
 ### Keyboard toggle
 - Physical pose: thumb-ring pinch.
@@ -80,7 +85,8 @@ These labels may still be predicted by the existing model, but they will not dri
   - palm-facing gate passes
   - `hold` is not active
 - Clicking stays allowed while `hold` is active.
-- Movement should also freeze during active click pinch to improve precision when targeting on-screen items.
+- During a left pinch, movement freezes only until drag starts.
+- During a right pinch, movement stays frozen until the pinch is released.
 
 ## Keyboard mode rules
 - Keyboard toggle is rule-based.
