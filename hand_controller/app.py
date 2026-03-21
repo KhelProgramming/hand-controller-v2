@@ -16,7 +16,8 @@ def build_boot_message(config: AppConfig, state: RuntimeState) -> str:
             f"mode={state.mode.value}",
             f"control_enabled={state.control_enabled}",
             f"tuning={config.tuning_path or 'defaults'}",
-            "status=phase-5-ready",
+            f"ml_enabled={config.ml.enabled}",
+            "status=phase-6-ready",
         ]
     )
 
@@ -31,7 +32,7 @@ def main() -> None:
     parser.add_argument(
         "--mouse-smoke",
         action="store_true",
-        help="Run the Phase 5 mouse smoke test with movement and rule-based clicks.",
+        help="Run the Phase 6 mouse smoke test with movement, clicks, and ML command integration.",
     )
     parser.add_argument(
         "--tuning",

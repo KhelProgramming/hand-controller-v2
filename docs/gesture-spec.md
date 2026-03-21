@@ -18,8 +18,8 @@ This document freezes the meaning of each gesture before implementation starts.
 ### `hold`
 - Physical pose: closed fist.
 - Runtime meaning: clutch.
-- Runtime action: mouse movement off only.
-- Important note: clicking remains allowed while `hold` is active.
+- Runtime action: mouse movement off and mouse clicking off.
+- Important note: this acts as a safety lock while the fist is active.
 - Removed meaning: this no longer triggers Alt+Tab.
 
 ### `toggle`
@@ -27,6 +27,7 @@ This document freezes the meaning of each gesture before implementation starts.
 - Runtime meaning: toggle `control_enabled`.
 - Runtime action: turn control on or off.
 - Important note: camera, MediaPipe, and MLP inference stay running even when control is off so the user can turn control back on with the same gesture.
+- Safety note: the pose must be sustained for the configured hold time before toggling.
 
 ### `undo`
 - Physical pose: two-finger pose from the original MLP dataset.
@@ -84,9 +85,10 @@ These labels may still be predicted by the existing model, but they will not dri
   - `mode == mouse`
   - palm-facing gate passes
   - `hold` is not active
-- Clicking stays allowed while `hold` is active.
+- Clicking is blocked while `hold` is active.
 - During a left pinch, movement freezes only until drag starts.
 - During a right pinch, movement stays frozen until the pinch is released.
+- `undo` and `redo` are ML-owned one-shot commands in mouse mode.
 
 ## Keyboard mode rules
 - Keyboard toggle is rule-based.

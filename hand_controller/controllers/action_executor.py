@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from .actions import Action, Click, DoubleClick, MouseDown, MouseUp, MoveRelative
+from .actions import Action, Click, DoubleClick, Hotkey, MouseDown, MouseUp, MoveRelative
 
 
 def get_screen_size() -> tuple[int, int]:
@@ -37,6 +37,8 @@ def execute_actions(actions: Iterable[Action]) -> None:
             pyautogui.mouseDown(button=action.button, _pause=False)
         elif isinstance(action, MouseUp):
             pyautogui.mouseUp(button=action.button, _pause=False)
+        elif isinstance(action, Hotkey):
+            pyautogui.hotkey(*action.keys, _pause=False)
         elif isinstance(action, Click):
             pyautogui.mouseDown(button=action.button, _pause=False)
             pyautogui.mouseUp(button=action.button, _pause=False)

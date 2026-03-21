@@ -30,14 +30,14 @@ These decisions are intentional and should not be changed casually.
 - ML `toggle` uses the L-shape pose.
 - It toggles `control_enabled` only.
 - It must not stop camera capture, MediaPipe, or MLP inference.
+- It should require a short sustained hold before toggling.
 - Reason: the user must be able to turn control back on using the same gesture while the app is still running.
 
 ### Clutch
 - ML `hold` uses the closed-fist pose.
 - `hold` means clutch only.
-- It disables mouse movement only.
-- Clicking remains allowed while clutch is active.
-- Reason: this improves precision because the cursor stops moving as the hand closes for a click.
+- It disables mouse movement and mouse clicks.
+- Reason: in practice, the fist pose can accidentally collapse into thumb-index or thumb-middle contact, so click lock is safer.
 
 ### Idle
 - `idle` is a real MLP class.
@@ -129,6 +129,8 @@ Completed:
 - Phase 3 validated on the user's machine
 - Phase 4 validated on the user's machine: stable mouse movement is smooth and usable
 - Phase 5 click/drag refactor code: release-based left tap, easier double-click path, down-triggered right click, hold-to-drag, JSON tuning overrides, and updated `--mouse-smoke`
+- Phase 6 baseline code: MLP predictor, action adapter, fallback artifact lookup to `touch-v15`, and integrated `toggle` / `hold` / `undo` / `redo` in `--mouse-smoke`
+- Current Phase 6 behavior uses configurable ML settings under the `ml` section of the tuning JSON files.
 
 Repo-local source of truth:
 - `docs/gesture-spec.md`
@@ -149,6 +151,7 @@ Smoke tests already passed:
 ## Next exact phase
 
 Current validation task:
+- install `requirements-later.txt` if ML dependencies are not present yet
 - run `python -m hand_controller --mouse-smoke`
 - confirm left click via quick thumb-index pinch-and-release
 - confirm right click via thumb-middle pinch down
@@ -156,6 +159,9 @@ Current validation task:
 - confirm left-hold starts drag and releasing the pinch ends drag
 - confirm cursor freezes before drag starts, not for the entire drag
 - adjust `tuning.local.json` if the click feel still needs experimentation
+- confirm `toggle` can turn control off and on again while the preview keeps running
+- confirm `hold` freezes movement only
+- confirm `undo` and `redo` hotkeys fire once per gesture
 
 Next implementation phase after validation:
 - Phase 6: MLP adapter

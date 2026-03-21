@@ -214,7 +214,9 @@ class MouseController:
         self,
         *,
         anchor_norm: tuple[float, float] | None,
-        movement_gate_open: bool,
+        control_enabled: bool,
+        movement_allowed: bool,
+        click_enabled: bool,
         click_state: MouseClickGestureState | None,
         now: float,
     ) -> tuple[list[Action], str]:
@@ -227,18 +229,31 @@ class MouseController:
             self._reset_motion()
             return actions, "Mouse | drag release" if released_drag else "Mouse | no active hand"
 
-        if not movement_gate_open:
+        if not control_enabled:
             released_drag = self._release_drag_if_needed(actions)
             self._cancel_left_press()
             self._reset_motion()
-            return actions, "Mouse | drag release" if released_drag else "Mouse | gated"
+            return actions, "Mouse | drag release" if released_drag else "Mouse | control off"
 
-        click_actions, click_status, freeze_for_click = self._handle_click_state(click_state, now)
-        actions.extend(click_actions)
+        click_status: str | None = None
+        freeze_for_click = False
+
+        if not click_enabled:
+            released_drag = self._release_drag_if_needed(actions)
+            self._cancel_left_press()
+            if released_drag:
+                click_status = "Mouse | drag release"
+        else:
+            click_actions, click_status, freeze_for_click = self._handle_click_state(click_state, now)
+            actions.extend(click_actions)
 
         if freeze_for_click:
             self._reset_motion()
             return actions, click_status or "Mouse | click ready"
+
+        if not movement_allowed:
+            self._reset_motion()
+            return actions, click_status or "Mouse | movement frozen"
 
         x, y = anchor_norm
 

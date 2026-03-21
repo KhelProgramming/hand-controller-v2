@@ -12,6 +12,7 @@ Current status:
 - Phase 3 complete: active-hand selection and palm-facing safety detection passed local validation.
 - Phase 4 complete: stable mouse movement passed local validation on the user's machine.
 - Phase 5 click/drag refactor code exists: tap-based left click, easier double-click behavior, down-triggered right click, hold-to-drag, and a JSON tuning override file.
+- Phase 6 baseline code exists: MLP adapter for `toggle`, `hold`, `undo`, and `redo`, with artifact fallback to the existing `touch-v15` model files.
 
 ## Baseline
 - Python 3.11
@@ -104,6 +105,14 @@ Most useful fields:
 - `right_press_multiplier`
 - `right_release_multiplier`
 
+ML control fields live under the `ml` section:
+- `confirm_frames`
+- `toggle_hold_seconds`
+- `toggle_cooldown`
+- `shortcut_cooldown`
+- `gate_min_p1`
+- `gate_min_margin`
+
 You can also point to another file explicitly:
 
 ```powershell
@@ -123,3 +132,18 @@ packages separately:
 ```powershell
 pip install -r requirements-later.txt
 ```
+
+Phase 6 needs those later packages. If they are not installed yet, `--mouse-smoke`
+will still run, but the ML overlay will show that ML is unavailable.
+
+## Phase 6 ML behavior
+When the ML artifacts and dependencies are available:
+- `toggle` must be held briefly before it flips `control_enabled`
+- `hold` freezes movement and disables rule-based clicks
+- `undo` sends `Ctrl+Z`
+- `redo` sends `Ctrl+Y`
+- ignored MLP labels like `left_click` and `right_click` do not drive behavior
+
+Artifact lookup order:
+1. `hand-controller-rewrite/artifacts/`
+2. fallback to `touch-v15/hand_controller/artifacts/`

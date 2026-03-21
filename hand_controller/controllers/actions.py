@@ -26,8 +26,13 @@ class MouseUp:
 
 
 @dataclass(frozen=True, slots=True)
+class Hotkey:
+    keys: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class DoubleClick:
     button: Literal["left"] = "left"
 
 
-Action = Union[MoveRelative, Click, MouseDown, MouseUp, DoubleClick]
+Action = Union[MoveRelative, Click, MouseDown, MouseUp, Hotkey, DoubleClick]

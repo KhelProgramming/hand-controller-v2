@@ -56,6 +56,7 @@ Exit criteria:
 - Load existing artifacts.
 - Honor `toggle`, `hold`, `undo`, `redo`.
 - Ignore MLP click labels for behavior.
+- Keep running even when ML artifacts or dependencies are temporarily unavailable.
 
 Exit criteria:
 - MLP commands work without breaking movement or clicks.

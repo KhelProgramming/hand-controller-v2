@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, fields, replace
+from dataclasses import asdict, dataclass, field, fields, replace
 import json
 from pathlib import Path
 from typing import Any
@@ -8,6 +8,8 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TUNING_PATH = REPO_ROOT / "tuning.local.json"
+DEFAULT_ARTIFACTS_DIR = REPO_ROOT / "artifacts"
+DEFAULT_FALLBACK_ARTIFACTS_DIR = REPO_ROOT.parent / "touch-v15" / "hand_controller" / "artifacts"
 
 
 @dataclass(slots=True, frozen=True)
@@ -69,6 +71,31 @@ class MLConfig:
     enabled: bool = True
     accepted_action_labels: tuple[str, ...] = ("toggle", "hold", "undo", "redo")
     ignored_behavior_labels: tuple[str, ...] = ("left_click", "right_click", "idle")
+    scaler_path: str = field(
+        default_factory=lambda: str(DEFAULT_ARTIFACTS_DIR / "validator_scaler.joblib")
+    )
+    label_encoder_path: str = field(
+        default_factory=lambda: str(DEFAULT_ARTIFACTS_DIR / "validator_label_encoder.joblib")
+    )
+    model_path: str = field(
+        default_factory=lambda: str(DEFAULT_ARTIFACTS_DIR / "validator_MLP.joblib")
+    )
+    fallback_scaler_path: str = field(
+        default_factory=lambda: str(DEFAULT_FALLBACK_ARTIFACTS_DIR / "validator_scaler.joblib")
+    )
+    fallback_label_encoder_path: str = field(
+        default_factory=lambda: str(DEFAULT_FALLBACK_ARTIFACTS_DIR / "validator_label_encoder.joblib")
+    )
+    fallback_model_path: str = field(
+        default_factory=lambda: str(DEFAULT_FALLBACK_ARTIFACTS_DIR / "validator_MLP.joblib")
+    )
+    gate_min_p1: float = 0.42
+    gate_min_margin: float = 0.05
+    stability_window: int = 4
+    confirm_frames: int = 2
+    toggle_hold_seconds: float = 0.45
+    toggle_cooldown: float = 0.80
+    shortcut_cooldown: float = 0.60
 
 
 @dataclass(slots=True, frozen=True)
@@ -169,4 +196,17 @@ def tuning_snapshot(config: AppConfig) -> dict[str, Any]:
         "tuning_path": config.tuning_path,
         "mouse_click": asdict(config.mouse_click),
         "mouse_motion": asdict(config.mouse_motion),
+        "ml": {
+            "enabled": config.ml.enabled,
+            "gate_min_p1": config.ml.gate_min_p1,
+            "gate_min_margin": config.ml.gate_min_margin,
+            "stability_window": config.ml.stability_window,
+            "confirm_frames": config.ml.confirm_frames,
+            "toggle_hold_seconds": config.ml.toggle_hold_seconds,
+            "toggle_cooldown": config.ml.toggle_cooldown,
+            "shortcut_cooldown": config.ml.shortcut_cooldown,
+            "scaler_path": config.ml.scaler_path,
+            "label_encoder_path": config.ml.label_encoder_path,
+            "model_path": config.ml.model_path,
+        },
     }

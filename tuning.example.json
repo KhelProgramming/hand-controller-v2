@@ -10,5 +10,13 @@
     "double_click_interval": 0.6,
     "double_click_assist_window": 0.38,
     "left_hold_drag_seconds": 0.38
+  },
+  "ml": {
+    "confirm_frames": 2,
+    "toggle_hold_seconds": 0.45,
+    "toggle_cooldown": 0.8,
+    "shortcut_cooldown": 0.6,
+    "gate_min_p1": 0.42,
+    "gate_min_margin": 0.05
   }
 }

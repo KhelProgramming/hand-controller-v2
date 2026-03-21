@@ -5,6 +5,8 @@ import time
 from ..config.settings import AppConfig
 from ..controllers import MouseController, execute_actions, get_screen_size
 from ..gestures import MouseClickGestureState, MouseClickDetector, is_palm_facing_thumb_pinky
+from ..ml import MLPrediction, MLPredictor, MLControlAdapter
+from ..runtime.state import RuntimeState
 from ..vision.camera import Camera
 from ..vision.hand_selector import HandSelector
 from ..vision.hand_tracker import HandTracker
@@ -42,6 +44,11 @@ def _draw_mouse_smoke(
     click_state: MouseClickGestureState,
     click_freeze: bool,
     drag_active: bool,
+    runtime_state: RuntimeState,
+    ml_prediction: MLPrediction,
+    ml_status: str,
+    ml_available: bool,
+    ml_reason: str | None,
 ) -> None:
     import cv2
 
@@ -117,6 +124,9 @@ def _draw_mouse_smoke(
         [
             f"hands={len(vision.hands)}",
             f"active={selected.primary.label if selected.primary else '-'}",
+            f"control={'on' if runtime_state.control_enabled else 'off'}",
+            f"hold={'yes' if runtime_state.hold_active else 'no'}",
+            f"clicks={'on' if runtime_state.control_enabled and not runtime_state.hold_active else 'off'}",
             f"movement={'on' if movement_enabled else 'off'}",
             f"freeze={'yes' if click_freeze else 'no'}",
             f"drag={'yes' if drag_active else 'no'}",
@@ -134,6 +144,37 @@ def _draw_mouse_smoke(
         2,
         cv2.LINE_AA,
     )
+    ml_line = "  ".join(
+        [
+            f"ml={'on' if ml_available else 'off'}",
+            f"raw={ml_prediction.raw_label}",
+            f"stable={runtime_state.latest_ml_label}",
+            f"p1={ml_prediction.p1:.2f}" if ml_prediction.p1 is not None else "p1=-",
+            f"margin={ml_prediction.margin:.2f}" if ml_prediction.margin is not None else "margin=-",
+            f"ml_status={ml_status}",
+        ]
+    )
+    cv2.putText(
+        frame_bgr,
+        ml_line,
+        (16, 60),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.62,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
+    if not ml_available and ml_reason:
+        cv2.putText(
+            frame_bgr,
+            f"ml_reason={ml_reason}",
+            (16, 88),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (0, 200, 255),
+            2,
+            cv2.LINE_AA,
+        )
 
 
 def run_mouse_smoke(config: AppConfig) -> None:
@@ -147,6 +188,9 @@ def run_mouse_smoke(config: AppConfig) -> None:
         click_settings=config.mouse_click,
     )
     click_detector = MouseClickDetector(config.mouse_click)
+    runtime_state = RuntimeState()
+    ml_predictor, ml_reason = MLPredictor.try_create(config.ml)
+    ml_adapter = MLControlAdapter(config.ml)
 
     with Camera(
         index=config.camera.index,
@@ -162,7 +206,7 @@ def run_mouse_smoke(config: AppConfig) -> None:
         if not camera.is_opened():
             raise RuntimeError("Unable to open the configured camera.")
 
-        window_name = "Hand Controller Rewrite - Phase 5 Mouse Smoke"
+        window_name = "Hand Controller Rewrite - Phase 6 Mouse Smoke"
 
         while True:
             ok, frame_bgr = camera.read()
@@ -180,23 +224,47 @@ def run_mouse_smoke(config: AppConfig) -> None:
                 if active_hand is not None
                 else False
             )
-            movement_enabled = active_hand is not None and palm_facing
             anchor_norm = _movement_anchor_norm(active_hand) if active_hand is not None else None
-            click_state = click_detector.analyze(
-                active_hand=active_hand,
-                frame_width=vision.frame_width,
-                frame_height=vision.frame_height,
+            runtime_state.active_hand_label = active_hand.label if active_hand is not None else None
+            runtime_state.palm_facing = palm_facing
+            now = time.time()
+
+            if ml_predictor is not None:
+                ml_prediction = ml_predictor.predict(active_hand)
+            else:
+                ml_prediction = MLPrediction(available=False, reason=ml_reason)
+            ml_update = ml_adapter.update(ml_prediction, runtime_state, now)
+            click_enabled = runtime_state.control_enabled and not runtime_state.hold_active
+            if click_enabled:
+                click_state = click_detector.analyze(
+                    active_hand=active_hand,
+                    frame_width=vision.frame_width,
+                    frame_height=vision.frame_height,
+                )
+            else:
+                click_detector.reset()
+                click_state = MouseClickGestureState()
+            movement_enabled = (
+                active_hand is not None
+                and palm_facing
+                and runtime_state.control_enabled
+                and not runtime_state.hold_active
             )
+            runtime_state.movement_frozen = not movement_enabled
 
             actions, movement_status = controller.update(
                 anchor_norm=anchor_norm,
-                movement_gate_open=movement_enabled,
+                control_enabled=runtime_state.control_enabled,
+                movement_allowed=movement_enabled,
+                click_enabled=click_enabled,
                 click_state=click_state,
-                now=time.time(),
+                now=now,
             )
-            execute_actions(actions)
-            click_freeze = click_state.right_pressed or (
+            execute_actions([*ml_update.actions, *actions])
+            click_freeze = click_enabled and (
+                click_state.right_pressed or (
                 click_state.left_pressed and not controller.state.drag_active
+                )
             )
 
             debug_frame = frame_bgr.copy()
@@ -211,6 +279,11 @@ def run_mouse_smoke(config: AppConfig) -> None:
                 click_state=click_state,
                 click_freeze=click_freeze,
                 drag_active=controller.state.drag_active,
+                runtime_state=runtime_state,
+                ml_prediction=ml_prediction,
+                ml_status=ml_update.status,
+                ml_available=ml_predictor is not None,
+                ml_reason=ml_reason,
             )
 
             cv2.imshow(window_name, debug_frame)
