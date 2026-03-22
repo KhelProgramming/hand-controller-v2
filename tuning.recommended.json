@@ -38,6 +38,8 @@
     "toggle_hold_seconds": 0.45,
     "toggle_cooldown": 0.8,
     "shortcut_cooldown": 0.6,
+    "pre_hold_right_click_suppression": true,
+    "pre_hold_min_p1": 0.55,
     "gate_min_p1": 0.42,
     "gate_min_margin": 0.05
   }

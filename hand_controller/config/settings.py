@@ -146,6 +146,8 @@ class MLConfig:
     toggle_hold_seconds: float = 0.45
     toggle_cooldown: float = 0.80
     shortcut_cooldown: float = 0.60
+    pre_hold_right_click_suppression: bool = True
+    pre_hold_min_p1: float = 0.55
 
 
 @dataclass(slots=True, frozen=True)
@@ -261,6 +263,8 @@ def tuning_snapshot(config: AppConfig) -> dict[str, Any]:
             "toggle_hold_seconds": config.ml.toggle_hold_seconds,
             "toggle_cooldown": config.ml.toggle_cooldown,
             "shortcut_cooldown": config.ml.shortcut_cooldown,
+            "pre_hold_right_click_suppression": config.ml.pre_hold_right_click_suppression,
+            "pre_hold_min_p1": config.ml.pre_hold_min_p1,
             "scaler_path": config.ml.scaler_path,
             "label_encoder_path": config.ml.label_encoder_path,
             "model_path": config.ml.model_path,

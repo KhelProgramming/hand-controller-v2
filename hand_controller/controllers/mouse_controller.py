@@ -134,6 +134,8 @@ class MouseController:
         self,
         click_state: MouseClickGestureState,
         now: float,
+        *,
+        right_click_allowed: bool,
     ) -> tuple[list[Action], str | None, bool]:
         actions: list[Action] = []
         status: str | None = None
@@ -197,6 +199,7 @@ class MouseController:
 
         if (
             click_state.right_down
+            and right_click_allowed
             and not self.state.drag_active
             and (now - self.state.last_right_click) >= self.click_settings.click_cooldown
         ):
@@ -205,7 +208,7 @@ class MouseController:
             if status is None:
                 status = "Mouse | right click"
 
-        freeze_for_click = click_state.right_pressed or (
+        freeze_for_click = (right_click_allowed and click_state.right_pressed) or (
             click_state.left_pressed and not self.state.drag_active
         )
         return actions, status, freeze_for_click
@@ -217,6 +220,7 @@ class MouseController:
         control_enabled: bool,
         movement_allowed: bool,
         click_enabled: bool,
+        right_click_allowed: bool = True,
         click_state: MouseClickGestureState | None,
         now: float,
     ) -> tuple[list[Action], str]:
@@ -244,7 +248,11 @@ class MouseController:
             if released_drag:
                 click_status = "Mouse | drag release"
         else:
-            click_actions, click_status, freeze_for_click = self._handle_click_state(click_state, now)
+            click_actions, click_status, freeze_for_click = self._handle_click_state(
+                click_state,
+                now,
+                right_click_allowed=right_click_allowed,
+            )
             actions.extend(click_actions)
 
         if freeze_for_click:

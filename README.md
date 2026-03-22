@@ -199,6 +199,8 @@ ML control fields live under the `ml` section:
 - `toggle_hold_seconds`
 - `toggle_cooldown`
 - `shortcut_cooldown`
+- `pre_hold_right_click_suppression`
+- `pre_hold_min_p1`
 - `gate_min_p1`
 - `gate_min_margin`
 
@@ -229,6 +231,7 @@ will still run, but the ML overlay will show that ML is unavailable.
 When the ML artifacts and dependencies are available:
 - `toggle` must be held briefly before it flips `control_enabled`
 - `hold` freezes movement and disables rule-based clicks
+- when the model is already strongly leaning toward raw `hold`, right click can be suppressed early to reduce accidental middle-pinch clicks during fist closure
 - `undo` sends `Ctrl+Z`
 - `redo` sends `Ctrl+Y`
 - ignored MLP labels like `left_click` and `right_click` do not drive behavior

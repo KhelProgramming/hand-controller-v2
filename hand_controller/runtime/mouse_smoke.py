@@ -69,6 +69,72 @@ def _draw_keyboard_overlay(frame_bgr, *, keyboard_update: KeyboardUpdate, contro
         )
 
 
+def _wrap_text_lines(
+    *,
+    text: str,
+    max_width: int,
+    font,
+    scale: float,
+    thickness: int,
+) -> list[str]:
+    import cv2
+
+    words = text.split()
+    if not words:
+        return [""]
+
+    lines: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        candidate = f"{current} {word}"
+        width, _ = cv2.getTextSize(candidate, font, scale, thickness)[0]
+        if width <= max_width:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def _draw_wrapped_text(
+    frame_bgr,
+    *,
+    text: str,
+    x: int,
+    y: int,
+    max_width: int,
+    scale: float,
+    color: tuple[int, int, int],
+    thickness: int,
+    line_gap: int = 8,
+) -> int:
+    import cv2
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text_height = cv2.getTextSize("Ag", font, scale, thickness)[0][1]
+    cursor_y = y
+    for line in _wrap_text_lines(
+        text=text,
+        max_width=max_width,
+        font=font,
+        scale=scale,
+        thickness=thickness,
+    ):
+        cv2.putText(
+            frame_bgr,
+            line,
+            (x, cursor_y),
+            font,
+            scale,
+            color,
+            thickness,
+            cv2.LINE_AA,
+        )
+        cursor_y += text_height + line_gap
+    return cursor_y
+
+
 def _draw_control_smoke(
     frame_bgr,
     *,
@@ -88,6 +154,7 @@ def _draw_control_smoke(
     ml_reason: str | None,
     mode_toggle_status: str,
     keyboard_update: KeyboardUpdate,
+    pre_hold_right_suppressed: bool,
 ) -> None:
     import cv2
 
@@ -177,6 +244,7 @@ def _draw_control_smoke(
             *common_parts,
             f"hold={'yes' if runtime_state.hold_active else 'no'}",
             f"clicks={'on' if runtime_state.control_enabled and not runtime_state.hold_active else 'off'}",
+            f"prehold_r={'on' if pre_hold_right_suppressed else 'off'}",
             f"movement={'on' if movement_enabled else 'off'}",
             f"freeze={'yes' if click_freeze else 'no'}",
             f"drag={'yes' if drag_active else 'no'}",
@@ -193,15 +261,15 @@ def _draw_control_smoke(
             "press q to quit",
         ]
 
-    cv2.putText(
+    next_y = _draw_wrapped_text(
         frame_bgr,
-        "  ".join(status_parts),
-        (16, 32),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.65,
-        (255, 255, 255),
-        2,
-        cv2.LINE_AA,
+        text="  ".join(status_parts),
+        x=16,
+        y=32,
+        max_width=max(120, width - 32),
+        scale=0.65,
+        color=(255, 255, 255),
+        thickness=2,
     )
     ml_line = "  ".join(
         [
@@ -213,26 +281,26 @@ def _draw_control_smoke(
             f"ml_status={ml_status}",
         ]
     )
-    cv2.putText(
+    next_y = _draw_wrapped_text(
         frame_bgr,
-        ml_line,
-        (16, 60),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.60,
-        (255, 255, 255),
-        2,
-        cv2.LINE_AA,
+        text=ml_line,
+        x=16,
+        y=next_y,
+        max_width=max(120, width - 32),
+        scale=0.60,
+        color=(255, 255, 255),
+        thickness=2,
     )
     if not ml_available and ml_reason:
-        cv2.putText(
+        _draw_wrapped_text(
             frame_bgr,
-            f"ml_reason={ml_reason}",
-            (16, 88),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.55,
-            (0, 200, 255),
-            2,
-            cv2.LINE_AA,
+            text=f"ml_reason={ml_reason}",
+            x=16,
+            y=next_y,
+            max_width=max(120, width - 32),
+            scale=0.55,
+            color=(0, 200, 255),
+            thickness=2,
         )
 
 
@@ -292,6 +360,7 @@ def run_mouse_smoke(config: AppConfig) -> None:
                 ml_reason=frame_result.ml_reason,
                 mode_toggle_status=frame_result.mode_toggle_status,
                 keyboard_update=frame_result.keyboard_update,
+                pre_hold_right_suppressed=frame_result.pre_hold_right_suppressed,
             )
 
             cv2.imshow(window_name, debug_frame)

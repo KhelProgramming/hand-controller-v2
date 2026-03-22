@@ -19,6 +19,7 @@ from ..gestures import (
     is_palm_facing_thumb_pinky,
 )
 from ..ml import MLPrediction, MLPredictor, MLControlAdapter
+from ..ml.labels import ML_LABEL_HOLD
 from ..runtime.state import Mode, RuntimeState
 from ..vision.hand_selector import HandSelector
 from ..vision.models import SelectedHands, VisionResult
@@ -48,6 +49,7 @@ class ControlFrameResult:
     ml_reason: str | None
     mode_toggle_status: str
     drag_active: bool
+    pre_hold_right_suppressed: bool
 
 
 class LiveControlEngine:
@@ -86,6 +88,7 @@ class LiveControlEngine:
             control_enabled=self.runtime_state.control_enabled,
             movement_allowed=False,
             click_enabled=False,
+            right_click_allowed=False,
             click_state=MouseClickGestureState(),
             now=now,
         )
@@ -95,6 +98,19 @@ class LiveControlEngine:
 
         self._last_mode = self.runtime_state.mode
         return actions, status
+
+    def _should_pre_hold_suppress_right_click(self, prediction: MLPrediction) -> bool:
+        if not self.config.ml.pre_hold_right_click_suppression:
+            return False
+        if not prediction.available:
+            return False
+        if self.runtime_state.mode != Mode.MOUSE:
+            return False
+        if not self.runtime_state.control_enabled or self.runtime_state.hold_active:
+            return False
+        if prediction.raw_label != ML_LABEL_HOLD:
+            return False
+        return (prediction.p1 or 0.0) >= self.config.ml.pre_hold_min_p1
 
     def process_frame(
         self,
@@ -150,6 +166,7 @@ class LiveControlEngine:
         movement_status = transition_status or "idle"
         movement_enabled = False
         click_freeze = False
+        pre_hold_right_suppressed = self._should_pre_hold_suppress_right_click(ml_prediction)
         action_queue = list(transition_actions)
         action_queue.extend(ml_update.actions)
 
@@ -178,6 +195,7 @@ class LiveControlEngine:
                 control_enabled=self.runtime_state.control_enabled,
                 movement_allowed=movement_enabled,
                 click_enabled=click_enabled,
+                right_click_allowed=not pre_hold_right_suppressed,
                 click_state=click_state,
                 now=now,
             )
@@ -210,6 +228,7 @@ class LiveControlEngine:
                 control_enabled=self.runtime_state.control_enabled,
                 movement_allowed=False,
                 click_enabled=False,
+                right_click_allowed=False,
                 click_state=MouseClickGestureState(),
                 now=now,
             )
@@ -233,4 +252,5 @@ class LiveControlEngine:
             ml_reason=self.ml_reason,
             mode_toggle_status=mode_toggle_update.status,
             drag_active=self.mouse_controller.state.drag_active,
+            pre_hold_right_suppressed=pre_hold_right_suppressed,
         )
