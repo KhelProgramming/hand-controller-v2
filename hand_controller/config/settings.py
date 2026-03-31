@@ -45,9 +45,9 @@ class MouseClickConfig:
     right_pinch_threshold_px: float = 46.0
     right_press_multiplier: float = 0.88
     right_release_multiplier: float = 1.12
-    click_cooldown: float = 0.08
-    double_click_interval: float = 0.60
-    double_click_assist_window: float = 0.38
+    click_cooldown: float = 0.01
+    double_click_interval: float = 0.25
+    double_click_assist_window: float = 0.50
     left_hold_drag_seconds: float = 0.38
 
 
