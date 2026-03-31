@@ -6,7 +6,7 @@ import math
 
 from ..config.settings import MouseClickConfig, MouseMotionConfig
 from ..gestures import MouseClickGestureState
-from .actions import Action, Click, MouseDown, MouseUp, MoveRelative
+from .actions import Action, Click, DoubleClick, MouseDown, MouseUp, MoveRelative
 
 
 @dataclass(slots=True)
@@ -20,11 +20,10 @@ class MouseMotionState:
     smooth_dx: float = 0.0
     smooth_dy: float = 0.0
     motion_awake: bool = False
-    last_left_click: float = 0.0
     last_right_click: float = 0.0
     left_press_started: float | None = None
-    left_second_tap_active: bool = False
     drag_active: bool = False
+    pending_click_time: float | None = None  # New: The Waiting Room timer
 
 
 class MouseController:
@@ -56,7 +55,6 @@ class MouseController:
 
     def _cancel_left_press(self) -> None:
         self.state.left_press_started = None
-        self.state.left_second_tap_active = False
 
     def _release_drag_if_needed(self, actions: list[Action]) -> bool:
         if self.state.drag_active:
@@ -140,63 +138,48 @@ class MouseController:
         actions: list[Action] = []
         status: str | None = None
 
-        if (
-            click_state.left_pressed
-            and self.state.left_press_started is None
-            and not self.state.drag_active
-            and not self.state.left_second_tap_active
-        ):
-            self.state.left_press_started = now
-
-        if click_state.left_down and not self.state.drag_active:
-            if (
-                self.state.last_left_click > 0.0
-                and (now - self.state.last_left_click) <= min(
-                    self.click_settings.double_click_interval,
-                    self.click_settings.double_click_assist_window,
-                )
-                and (now - self.state.last_left_click) >= self.click_settings.click_cooldown
-            ):
+        # 1. THE WAITING ROOM (Check for expired single clicks FIRST)
+        if self.state.pending_click_time is not None:
+            if (now - self.state.pending_click_time) > self.click_settings.double_click_interval:
+                # The timer expired! No second pinch came. It is a single click.
                 actions.append(Click(button="left"))
-                self.state.last_left_click = now
-                self.state.left_press_started = None
-                self.state.left_second_tap_active = True
+                self.state.pending_click_time = None
+                status = "Mouse | left click"
+
+        # 2. PINCH DOWN
+        if click_state.left_down:
+            if self.state.pending_click_time is not None:
+                # Aha! They pinched down AGAIN while a click was in the waiting room!
+                actions.append(DoubleClick(button="left"))
+                self.state.pending_click_time = None  # Clear the waiting room
+                self.state.left_press_started = None  # Reset hold timer
                 status = "Mouse | double click"
             else:
+                # Start the hold stopwatch
                 self.state.left_press_started = now
-                self.state.left_second_tap_active = False
 
-        if (
-            click_state.left_pressed
-            and self.state.left_press_started is not None
-            and not self.state.drag_active
-            and not self.state.left_second_tap_active
-            and (now - self.state.left_press_started) >= self.click_settings.left_hold_drag_seconds
-        ):
-            actions.append(MouseDown(button="left"))
-            self.state.drag_active = True
-            status = "Mouse | drag start"
+        # 3. PINCH HOLD (Are we dragging?)
+        if click_state.left_pressed and self.state.left_press_started is not None:
+            if not self.state.drag_active and (now - self.state.left_press_started) >= self.click_settings.left_hold_drag_seconds:
+                actions.append(MouseDown(button="left"))
+                self.state.drag_active = True
+                status = "Mouse | drag start"
 
-        if click_state.left_up and (
-            self.state.left_press_started is not None or self.state.left_second_tap_active
-        ):
-            press_duration = 0.0
-            if self.state.left_press_started is not None:
-                press_duration = now - self.state.left_press_started
-
+        # 4. PINCH RELEASE (Pinch Up)
+        if click_state.left_up:
             if self.state.drag_active:
+                # We were dragging, so drop the item.
                 actions.append(MouseUp(button="left"))
                 self.state.drag_active = False
                 status = "Mouse | drag release"
-            elif self.state.left_second_tap_active:
-                self.state.left_second_tap_active = False
-            elif press_duration < self.click_settings.left_hold_drag_seconds:
-                if (now - self.state.last_left_click) >= self.click_settings.click_cooldown:
-                    actions.append(Click(button="left"))
-                    self.state.last_left_click = now
-                    status = "Mouse | left click"
+            elif self.state.left_press_started is not None:
+                # It was a short tap! Put it in the waiting room.
+                self.state.pending_click_time = now
+            
+            # Clear the hold stopwatch
             self._cancel_left_press()
 
+        # 5. RIGHT CLICK
         if (
             click_state.right_down
             and right_click_allowed
@@ -208,9 +191,11 @@ class MouseController:
             if status is None:
                 status = "Mouse | right click"
 
+        # 6. FREEZE MOTION FOR STABILITY
         freeze_for_click = (right_click_allowed and click_state.right_pressed) or (
             click_state.left_pressed and not self.state.drag_active
         )
+
         return actions, status, freeze_for_click
 
     def update(
