@@ -6,8 +6,8 @@
     "right_pinch_threshold_px": 30.0,
     "right_press_multiplier": 0.88,
     "right_release_multiplier": 1.12,
-    "click_cooldown": 0.08,
-    "double_click_interval": 1.5,
+    "click_cooldown": 0.01,
+    "double_click_interval": 0.25,
     "double_click_assist_window": 0.95,
     "left_hold_drag_seconds": 0.8
   },
